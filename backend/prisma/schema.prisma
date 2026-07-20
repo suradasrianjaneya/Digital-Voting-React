@@ -1,0 +1,160 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ElectionStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  URL
+  IMAGE
+  TEXTAREA
+}
+
+enum OtpType {
+  VERIFY_ACCOUNT
+  RESET_PASSWORD
+}
+
+model User {
+  id               String       @id @default(uuid())
+  fullName         String
+  email            String       @unique
+  password         String
+  role             Role         @default(USER)
+  isVerified       Boolean      @default(false)
+  isApproved       Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  votes            Vote[]
+  auditLogs        AuditLog[]
+  createdElections Election[]   @relation("CreatedElections")
+}
+
+model OtpToken {
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  type      OtpType
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Election {
+  id                     String                     @id @default(uuid())
+  name                   String
+  description            String
+  type                   String
+  startDate              DateTime
+  endDate                DateTime
+  votingStartTime        String                     // "HH:MM" 24h format
+  votingEndTime          String                     // "HH:MM" 24h format
+  maxVotesAllowed        Int                        @default(1)
+  allowMultiplePositions Boolean                    @default(false)
+  status                 ElectionStatus             @default(DRAFT)
+  isPublic               Boolean                    @default(true)
+  bannerUrl              String?                    @db.Text
+  instructions           String?                    @db.Text
+  rules                  String?                    @db.Text
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+  
+  // Relations for User-Created Elections and Share Code
+  creatorId              String?
+  creator                User?                      @relation("CreatedElections", fields: [creatorId], references: [id], onDelete: SetNull)
+  inviteCode             String?                    @unique // 6-digit alphanumeric uppercase code
+  
+  fieldDefinitions       CandidateFieldDefinition[]
+  candidates             Candidate[]
+  votes                  Vote[]
+  eligibilities          ElectionEligibility[]
+}
+
+model CandidateFieldDefinition {
+  id             String               @id @default(uuid())
+  electionId     String
+  election       Election             @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  name           String
+  type           FieldType            @default(TEXT)
+  isRequired     Boolean              @default(false)
+  isVisibleOnCard Boolean             @default(true)
+  isCustom       Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  fieldValues    CandidateFieldValue[]
+
+  @@unique([electionId, name])
+}
+
+model Candidate {
+  id          String                @id @default(uuid())
+  electionId  String
+  election    Election              @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  
+  fieldValues CandidateFieldValue[]
+  votes       Vote[]
+}
+
+model CandidateFieldValue {
+  id                String                   @id @default(uuid())
+  candidateId       String
+  candidate         Candidate                @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  fieldDefinitionId String
+  fieldDefinition   CandidateFieldDefinition @relation(fields: [fieldDefinitionId], references: [id], onDelete: Cascade)
+  value             String                   @db.Text
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+
+  @@unique([candidateId, fieldDefinitionId])
+}
+
+model Vote {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  electionId  String
+  election    Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, electionId, candidateId])
+}
+
+model ElectionEligibility {
+  id            String   @id @default(uuid())
+  electionId    String
+  election      Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  emailDomain   String?
+  specificEmail String?
+  createdAt     DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String?  @db.Text
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
