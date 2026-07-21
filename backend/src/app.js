@@ -34,7 +34,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // General Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: process.env.NODE_ENV === 'development' ? 10000 : 200, // Relaxed for local developer testing
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -46,7 +46,7 @@ const limiter = rateLimit({
 // Auth specific Rate Limiting (Stricter security)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 30, // Relaxed for local developer testing
   standardHeaders: true,
   legacyHeaders: false,
   message: {

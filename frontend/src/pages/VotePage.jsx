@@ -13,7 +13,8 @@ import {
   User,
   ExternalLink,
   ChevronRight,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 

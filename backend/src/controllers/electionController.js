@@ -124,8 +124,30 @@ export const joinElectionByCode = async (req, res, next) => {
 
     const userEmail = req.user.email.toLowerCase().trim();
 
-    // Whitelist the user's specific email if election is private and user is not already whitelisted
+    // Whitelist the user's specific email if election is private and user matches domain/email restrictions
     if (!election.isPublic) {
+      const userDomain = userEmail.split('@')[1];
+
+      // 1. Get predefined eligibility restrictions set by the creator (where isCodeJoined = false)
+      const predefinedRules = election.eligibilities.filter((elig) => !elig.isCodeJoined);
+
+      if (predefinedRules.length > 0) {
+        // User must match at least one domain or specific email restriction
+        const matchesPredefined = predefinedRules.some((rule) => {
+          if (rule.specificEmail && rule.specificEmail.toLowerCase() === userEmail) return true;
+          if (rule.emailDomain && rule.emailDomain.toLowerCase() === userDomain) return true;
+          return false;
+        });
+
+        if (!matchesPredefined) {
+          return res.status(403).json({
+            success: false,
+            message: 'You do not meet the domain or email eligibility criteria for this private election.',
+          });
+        }
+      }
+
+      // 2. Add specific email eligibility for dashboard visibility if not already present
       const isAlreadyWhitelisted = election.eligibilities.some(
         (elig) => elig.specificEmail && elig.specificEmail.toLowerCase() === userEmail
       );
@@ -135,6 +157,7 @@ export const joinElectionByCode = async (req, res, next) => {
           data: {
             electionId: election.id,
             specificEmail: userEmail,
+            isCodeJoined: true, // Mark as joined via code
           },
         });
       }

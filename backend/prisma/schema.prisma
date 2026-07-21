@@ -76,7 +76,6 @@ model Election {
   createdAt              DateTime                   @default(now())
   updatedAt              DateTime                   @updatedAt
   
-  // Relations for User-Created Elections and Share Code
   creatorId              String?
   creator                User?                      @relation("CreatedElections", fields: [creatorId], references: [id], onDelete: SetNull)
   inviteCode             String?                    @unique // 6-digit alphanumeric uppercase code
@@ -146,6 +145,7 @@ model ElectionEligibility {
   election      Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
   emailDomain   String?
   specificEmail String?
+  isCodeJoined  Boolean  @default(false) // Distinguish predefined whitelist from invite-joined emails
   createdAt     DateTime @default(now())
 }
 

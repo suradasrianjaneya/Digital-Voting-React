@@ -208,20 +208,20 @@ export default function Landing() {
           <p className="text-slate-400">Have questions about running private organizational elections? Get in touch.</p>
         </div>
 
-        <form onSubmit={(e) => { e.preventDefault(); alert('Message sent simulated!'); }} className="glass-panel p-8 rounded-xl flex flex-col gap-6">
+        <form action="https://formspree.io/f/mojgljnr" method="POST" className="glass-panel p-8 rounded-xl flex flex-col gap-6">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-400">Full Name</label>
-              <input type="text" required className="glass-input h-10 px-3 rounded-lg text-sm" placeholder="John Doe" />
+              <input name = "name" type="text" required className="glass-input h-10 px-3 rounded-lg text-sm" placeholder="John Doe" />
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-400">Email Address</label>
-              <input type="email" required className="glass-input h-10 px-3 rounded-lg text-sm" placeholder="john@example.com" />
+              <input name = "email" type="email" required className="glass-input h-10 px-3 rounded-lg text-sm" placeholder="john@example.com" />
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <label className="text-xs font-semibold text-slate-400">Message Description</label>
-            <textarea required rows={4} className="glass-input p-3 rounded-lg text-sm resize-none" placeholder="Details about your election scope..."></textarea>
+            <textarea name = "message" required rows={4} className="glass-input p-3 rounded-lg text-sm resize-none" placeholder="Details about your election scope..."></textarea>
           </div>
           <button type="submit" className="h-11 bg-brand-primary hover:bg-brand-primary/95 text-white font-bold rounded-lg text-sm transition-colors mt-2">
             Send Inquiry message
