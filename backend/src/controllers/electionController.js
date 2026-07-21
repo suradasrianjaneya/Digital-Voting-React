@@ -124,11 +124,12 @@ export const joinElectionByCode = async (req, res, next) => {
 
     const userEmail = req.user.email.toLowerCase().trim();
 
-    // Whitelist the user's specific email if election is private and user matches domain/email restrictions
+    // 1. Whitelist the user's specific email to add it to their dashboard
+    // For private elections, check if they meet domain/email restrictions first
     if (!election.isPublic) {
       const userDomain = userEmail.split('@')[1];
 
-      // 1. Get predefined eligibility restrictions set by the creator (where isCodeJoined = false)
+      // Get predefined eligibility restrictions set by the creator (where isCodeJoined = false)
       const predefinedRules = election.eligibilities.filter((elig) => !elig.isCodeJoined);
 
       if (predefinedRules.length > 0) {
@@ -146,21 +147,21 @@ export const joinElectionByCode = async (req, res, next) => {
           });
         }
       }
+    }
 
-      // 2. Add specific email eligibility for dashboard visibility if not already present
-      const isAlreadyWhitelisted = election.eligibilities.some(
-        (elig) => elig.specificEmail && elig.specificEmail.toLowerCase() === userEmail
-      );
+    // 2. Add specific email eligibility for dashboard visibility if not already present (runs for all public and private)
+    const isAlreadyWhitelisted = election.eligibilities.some(
+      (elig) => elig.specificEmail && elig.specificEmail.toLowerCase() === userEmail
+    );
 
-      if (!isAlreadyWhitelisted) {
-        await prisma.electionEligibility.create({
-          data: {
-            electionId: election.id,
-            specificEmail: userEmail,
-            isCodeJoined: true, // Mark as joined via code
-          },
-        });
-      }
+    if (!isAlreadyWhitelisted) {
+      await prisma.electionEligibility.create({
+        data: {
+          electionId: election.id,
+          specificEmail: userEmail,
+          isCodeJoined: true, // Mark as joined via code
+        },
+      });
     }
 
     await logEvent({
@@ -184,10 +185,9 @@ export const getElections = async (req, res, next) => {
   try {
     const isAdmin = req.user.role === 'ADMIN';
     const userEmail = req.user.email.toLowerCase();
-    const userDomain = userEmail.split('@')[1];
     const now = new Date();
 
-    // Admins see all. Users see their own created ones, public ones, and whitelisted private ones.
+    // Admins see all. Users see their own created ones, and ones they have explicitly joined.
     const whereClause = isAdmin
       ? {}
       : {
@@ -195,17 +195,9 @@ export const getElections = async (req, res, next) => {
             { creatorId: req.user.id },
             {
               status: { not: 'DRAFT' },
-              isPublic: true,
-            },
-            {
-              status: { not: 'DRAFT' },
-              isPublic: false,
               eligibilities: {
                 some: {
-                  OR: [
-                    { specificEmail: userEmail },
-                    { emailDomain: userDomain },
-                  ],
+                  specificEmail: userEmail,
                 },
               },
             },

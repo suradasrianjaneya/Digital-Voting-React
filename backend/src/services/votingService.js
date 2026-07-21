@@ -79,21 +79,38 @@ export const castVote = async ({ userId, electionId, candidateId, ipAddress }) =
       throw err;
     }
 
-    // 5. Verify Eligibility for Private Elections
-    if (!election.isPublic) {
+    // 5. Verify that the user has joined this election (or is the creator or an admin)
+    const isCreatorOrAdmin = user.role === 'ADMIN' || election.creatorId === userId;
+    const hasJoined = election.eligibilities.some(
+      (rule) => rule.specificEmail && rule.specificEmail.toLowerCase() === user.email.toLowerCase()
+    );
+
+    if (!hasJoined && !isCreatorOrAdmin) {
+      const err = new Error('You must enter the invite code to join this election before casting a vote.');
+      err.statusCode = 403;
+      throw err;
+    }
+
+    // 6. Verify eligibility constraints for private elections
+    if (!election.isPublic && !isCreatorOrAdmin) {
       const email = user.email.toLowerCase();
       const domain = email.split('@')[1];
 
-      const isEligible = election.eligibilities.some((rule) => {
-        if (rule.specificEmail && rule.specificEmail.toLowerCase() === email) return true;
-        if (rule.emailDomain && rule.emailDomain.toLowerCase() === domain) return true;
-        return false;
-      });
+      // Get predefined eligibility restrictions set by the creator (where isCodeJoined = false)
+      const predefinedRules = election.eligibilities.filter((elig) => !elig.isCodeJoined);
 
-      if (!isEligible) {
-        const err = new Error('You do not meet the domain or email eligibility criteria for this private election');
-        err.statusCode = 403;
-        throw err;
+      if (predefinedRules.length > 0) {
+        const matchesPredefined = predefinedRules.some((rule) => {
+          if (rule.specificEmail && rule.specificEmail.toLowerCase() === email) return true;
+          if (rule.emailDomain && rule.emailDomain.toLowerCase() === domain) return true;
+          return false;
+        });
+
+        if (!matchesPredefined) {
+          const err = new Error('You do not meet the domain or email eligibility criteria for this private election');
+          err.statusCode = 403;
+          throw err;
+        }
       }
     }
 
